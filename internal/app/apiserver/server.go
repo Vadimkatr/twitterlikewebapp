@@ -27,7 +27,7 @@ var (
 )
 
 type Claims struct {
-	AccountId string `json:"id"`
+	AccountId int `json:"id"`
 	Email     string `json:"email"`
 	Username  string `json:"username"`
 	jwt.StandardClaims
@@ -63,7 +63,7 @@ func (s *server) handleUsersCreate() http.HandlerFunc {
 	type request struct {
 		Email    string `json:"email"`
 		Username string `json:"username"`
-		Password string `json:"password`
+		Password string `json:"password"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		req := &request{}
@@ -90,7 +90,7 @@ func (s *server) handleUsersCreate() http.HandlerFunc {
 func (s *server) handleUsersLogin() http.HandlerFunc {
 	type request struct {
 		Email    string `json:"email"`
-		Password string `json:"password`
+		Password string `json:"password"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		req := &request{}
@@ -162,7 +162,7 @@ func (s *server) authenticateUserWithJwt(w http.ResponseWriter, r *http.Request,
 	expirationTime := time.Now().Add(5 * time.Minute)
 	// Create the JWT claims, which includes the username and expiry time
 	claims := &Claims{
-		AccountId: u.AccountId
+		AccountId: u.AccountId,
 		Email: u.Email,
 		Username: u.Username,
 		StandardClaims: jwt.StandardClaims{
