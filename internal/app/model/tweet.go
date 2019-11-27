@@ -5,8 +5,7 @@ import (
 
 	validation "github.com/go-ozzo/ozzo-validation"
 
-) // use empty import because without them I have err with import in user.go; why?
-
+)
 
 type Tweet struct {
 	Id       int    `json:"id"`

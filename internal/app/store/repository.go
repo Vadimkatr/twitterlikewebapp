@@ -13,3 +13,7 @@ type UserRepository interface {
 type TweetRepository interface {
 	Create(*model.Tweet) error
 }
+
+type SubscriberRepository interface {
+	Create(*model.Subscriber) error
+}
