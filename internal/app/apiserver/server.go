@@ -56,7 +56,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *server) configureRouter() {
 	s.router.HandleFunc("/register", s.handleUsersCreate()).Methods("POST")
 	s.router.HandleFunc("/login", s.handleUsersLogin()).Methods("POST")
-
+	s.router.HandleFunc("/tweets", s.handleTweetsCreate()).Methods("POST")
 }
 
 func (s *server) handleUsersCreate() http.HandlerFunc {
@@ -117,18 +117,53 @@ func (s *server) handleUsersLogin() http.HandlerFunc {
 	}
 }
 
-func (s *server) checkAuthenticateUserWithJwt(w http.ResponseWriter, r *http.Request, u *model.User) {
+func (s *server) handleTweetsCreate() http.HandlerFunc {
+	type request struct {
+		Message string `json:"message"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		req := &request{}
+		if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+			s.error(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		userId, err, code := s.checkAuthenticateUserWithJwt(w, r)
+		if err != nil {
+			s.error(w, r, code, errNotAuthenticated)
+			return
+		}
+
+		u, err := s.store.User().Find(userId)
+		if err != nil {
+			// TODO: set better error message for this case
+			s.error(w, r, http.StatusInternalServerError, errors.New("cant find user in db"))
+			return
+		}
+
+		t := &model.Tweet{
+			Message: req.Message,
+			UserId: u.AccountId,
+		}
+		if err := s.store.Tweet().Create(t); err != nil {
+			s.error(w, r, http.StatusUnprocessableEntity, err)
+			return
+		}
+
+		s.respond(w, r, http.StatusCreated, map[string]string{"id": string(t.Id), "message": t.Message})
+	}
+}
+
+func (s *server) checkAuthenticateUserWithJwt(w http.ResponseWriter, r *http.Request) (int, error, int) {
 	// We can obtain the session token from the requests cookies, which come with every request
 	c, err := r.Cookie("token")
 	if err != nil {
 		if err == http.ErrNoCookie {
 			// If the cookie is not set, return an unauthorized status
-			w.WriteHeader(http.StatusUnauthorized)
-			return
+			return 0, err, http.StatusUnauthorized
 		}
 		// For any other type of error, return a bad request status
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		return 0, err, http.StatusBadRequest
 	}
 
 	// Get the JWT string from the cookie
@@ -146,16 +181,15 @@ func (s *server) checkAuthenticateUserWithJwt(w http.ResponseWriter, r *http.Req
 	})
 	if err != nil {
 		if err == jwt.ErrSignatureInvalid {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
+			return 0, err, http.StatusUnauthorized
 		}
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		return 0, err, http.StatusBadRequest
 	}
 	if !tkn.Valid {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
+		return 0, err, http.StatusUnauthorized
 	}
+
+	return claims.AccountId, nil, http.StatusOK
 }
 
 func (s *server) authenticateUserWithJwt(w http.ResponseWriter, r *http.Request, u *model.User) (string, error) {
