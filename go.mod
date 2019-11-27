@@ -8,4 +8,5 @@ require (
 	github.com/go-ozzo/ozzo-validation v3.6.0+incompatible
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gorilla/mux v1.7.3
+	golang.org/x/crypto v0.0.0-20191122220453-ac88ee75c92c
 )
