@@ -37,6 +37,11 @@ func (u *User) BeforeCreate() error {
 	return nil
 }
 
+// Sanitize - onle set user password for empty string
+func (u *User) Sanitize() {
+	u.Password = ""
+}
+
 func encryptString(s string) (string, error) {
 	b, err := bcrypt.GenerateFromPassword([]byte(s), bcrypt.MinCost)
 	if err != nil {

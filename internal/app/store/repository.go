@@ -1,7 +1,7 @@
 package store
 
 import (
-	"github.com/Vadimkatr/twitterlikewebapp/internal.app/model"
+	"github.com/Vadimkatr/twitterlikewebapp/internal/app/model"
 )
 
 type UserRepository interface {

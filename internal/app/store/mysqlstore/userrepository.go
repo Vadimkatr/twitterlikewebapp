@@ -17,12 +17,22 @@ func (r *UserRepository) Create(u *model.User) error {
 		return err
 	}
 
-	return r.store.db.QueryRow(
-		"INSERT INTO users (email, username, encrypted_password) VALUES (?, ?) RETURNING id",
+	row, err := r.store.db.Query(
+		"INSERT INTO users (email, username, encrypted_password) VALUES (?, ?, ?)",
 		u.Email,
 		u.Username,
 		u.EncryptedPassword,
-	).Scan(&u.Account_id)
+	)
+	
+	defer row.Close()
+	if err != nil {
+		return err
+	}
+	for row.Next() {
+		err := row.Scan(&u.Account_id)
+		return err
+	}
+	return nil
 }
 
 func (r *UserRepository) FindByEmail(email string) (*model.User, error) {

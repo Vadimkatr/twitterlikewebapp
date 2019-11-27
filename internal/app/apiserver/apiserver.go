@@ -3,9 +3,9 @@ package apiserver
 import (
 	"database/sql"
 	"net/http"
-	"github.com/gorilla/mux"
 
 	"github.com/Vadimkatr/twitterlikewebapp/internal/app/store/mysqlstore"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 func Start(config *Config) error {
@@ -16,16 +16,9 @@ func Start(config *Config) error {
 
 	defer db.Close()
 	store := mysqlstore.New(db)
-
-	r := mux.NewRouter()
-	r.HandleFunc("/register", handleUserCreate()).Methods("POST")
-	return http.ListenAndServe(":8080", r)
-}
-
-func handleUserCreate() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello"))
-	}
+	srv := newServer(store)
+	
+	return http.ListenAndServe(config.BindAddr, srv)
 }
 
 // newDB func create new db connection from databaseURL
