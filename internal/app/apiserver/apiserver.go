@@ -5,7 +5,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func Start() error {
+func Start(config *Config) error {
 	r := mux.NewRouter()
 	r.HandleFunc("/register", handleUserCreate()).Methods("POST")
 	return http.ListenAndServe(":8080", r)
