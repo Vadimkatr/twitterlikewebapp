@@ -8,9 +8,9 @@ import (
 )
 
 type User struct {
-	Account_id        int    `json:"id"`
-	Email             string `json:"email"`
+	AccountId        int    `json:"account_id"`
 	Username          string `json:"username"`
+	Email             string `json:"email"`
 	Password          string `json:"password,omitempty"`
 	EncryptedPassword string `json:"-"`
 }
@@ -40,6 +40,10 @@ func (u *User) BeforeCreate() error {
 // Sanitize - onle set user password for empty string
 func (u *User) Sanitize() {
 	u.Password = ""
+}
+
+func (u *User) ComparePassword(password string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(u.EncryptedPassword), []byte(password)) == nil
 }
 
 func encryptString(s string) (string, error) {

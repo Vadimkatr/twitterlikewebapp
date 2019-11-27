@@ -1,7 +1,10 @@
 package mysqlstore
 
 import (
+	"database/sql"
+
 	"github.com/Vadimkatr/twitterlikewebapp/internal/app/model"
+	"github.com/Vadimkatr/twitterlikewebapp/internal/app/store"
 )
 
 type UserRepository struct {
@@ -23,13 +26,13 @@ func (r *UserRepository) Create(u *model.User) error {
 		u.Username,
 		u.EncryptedPassword,
 	)
-	
+
 	defer row.Close()
 	if err != nil {
 		return err
 	}
 	for row.Next() {
-		err := row.Scan(&u.Account_id)
+		err := row.Scan(&u.AccountId)
 		return err
 	}
 	return nil
@@ -37,5 +40,20 @@ func (r *UserRepository) Create(u *model.User) error {
 
 func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
 	u := &model.User{}
+	if err := r.store.db.QueryRow(
+		"SELECT account_id, email, username, encrypted_password FROM users WHERE email = ?", 
+		email,
+	).Scan(
+		&u.AccountId, 
+		&u.Email, 
+		&u.Username,
+		&u.EncryptedPassword,
+	); err != nil {
+		if err != sql.ErrNoRows {
+			return nil, store.ErrRecordNotFound
+		}
+		return nil, err
+	}
+	
 	return u, nil
 }
