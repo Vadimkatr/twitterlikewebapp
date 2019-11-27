@@ -38,6 +38,27 @@ func (r *UserRepository) Create(u *model.User) error {
 	return nil
 }
 
+func (r *UserRepository) Find(id int) (*model.User, error) {
+	u := &model.User{}
+	if err := r.store.db.QueryRow(
+		"SELECT id, email, username, encrypted_password FROM users WHERE id = ?", 
+		id,
+	).Scan(
+		&u.Id, 
+		&u.Email, 
+		&u.Username,
+		&u.EncryptedPassword,
+	); err != nil {
+		if err != sql.ErrNoRows {
+			return nil, store.ErrRecordNotFound
+		}
+		return nil, err
+	}
+	
+	return u, nil
+}
+
+
 func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
 	u := &model.User{}
 	if err := r.store.db.QueryRow(
@@ -58,11 +79,12 @@ func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
 	return u, nil
 }
 
-func (r *UserRepository) Find(id int) (*model.User, error) {
+
+func (r *UserRepository) FindByUsername(username string) (*model.User, error) {
 	u := &model.User{}
 	if err := r.store.db.QueryRow(
-		"SELECT id, email, username, encrypted_password FROM users WHERE id = ?", 
-		id,
+		"SELECT id, email, username, encrypted_password FROM users WHERE username = ?", 
+		username,
 	).Scan(
 		&u.Id, 
 		&u.Email, 
@@ -76,4 +98,20 @@ func (r *UserRepository) Find(id int) (*model.User, error) {
 	}
 	
 	return u, nil
+}
+
+// SubscribeTo - create subscribe from u to su
+func (r *UserRepository) SubscribeTo(u *model.User, su *model.User) error {
+	row, err := r.store.db.Query(
+		"INSERT INTO subscribers (user_id, publisher_user_id) VALUES (?, ?)",
+		u.Id,
+		su.Id,
+	)
+
+	defer row.Close()
+	if err != nil {
+		return err
+	}
+	
+	return nil
 }

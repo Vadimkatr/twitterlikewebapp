@@ -57,6 +57,7 @@ func (s *server) configureRouter() {
 	s.router.HandleFunc("/register", s.handleUsersCreate()).Methods("POST")
 	s.router.HandleFunc("/login", s.handleUsersLogin()).Methods("POST")
 	s.router.HandleFunc("/tweets", s.handleTweetsCreate()).Methods("POST")
+	s.router.HandleFunc("/subscribe", s.handleSubscribeToUser()).Methods("POST")
 }
 
 func (s *server) handleUsersCreate() http.HandlerFunc {
@@ -114,6 +115,45 @@ func (s *server) handleUsersLogin() http.HandlerFunc {
 		}
 
 		s.respond(w, r, http.StatusOK, JwtToken{TokenString: tokenString})
+	}
+}
+
+func (s *server) handleSubscribeToUser() http.HandlerFunc {
+	type request struct {
+		Nickname string `json:"nickname"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		req := &request{}
+		if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+			s.error(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		userId, err, code := s.checkAuthenticateUserWithJwt(w, r)
+		if err != nil {
+			s.error(w, r, code, errNotAuthenticated)
+			return
+		}
+
+		u, err := s.store.User().Find(userId)
+		if err != nil {
+			// TODO: set better error message for this case
+			s.error(w, r, http.StatusInternalServerError, errors.New("cant find user in db"))
+			return
+		}
+
+		su, err := s.store.User().FindByUsername(req.Nickname)
+		if err != nil {
+			s.error(w, r, http.StatusInternalServerError, errors.New("cant find user in db"))
+			return
+		}
+
+		if err := s.store.User().SubscribeTo(u, su); err != nil {
+			s.error(w, r, http.StatusUnprocessableEntity, err)
+			return
+		}
+
+		s.respond(w, r, http.StatusCreated, nil)
 	}
 }
 

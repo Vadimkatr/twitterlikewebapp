@@ -10,7 +10,6 @@ type Store struct {
 	db                   *sql.DB
 	userRepository       *UserRepository
 	tweetRepository      *TweetRepository
-	subscriberRepository *SubscriberRepository
 }
 
 func New(db *sql.DB) *Store {
@@ -41,16 +40,4 @@ func (s *Store) Tweet() store.TweetRepository {
 	}
 
 	return s.tweetRepository
-}
-
-func (s *Store) Subscriber() store.SubscriberRepository {
-	if s.subscriberRepository != nil {
-		return s.subscriberRepository
-	}
-
-	s.subscriberRepository = &SubscriberRepository{
-		store: s,
-	}
-
-	return s.subscriberRepository
 }
