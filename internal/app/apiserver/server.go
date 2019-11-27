@@ -143,7 +143,7 @@ func (s *server) handleTweetsCreate() http.HandlerFunc {
 
 		t := &model.Tweet{
 			Message: req.Message,
-			UserId: u.AccountId,
+			UserId: u.Id,
 		}
 		if err := s.store.Tweet().Create(t); err != nil {
 			s.error(w, r, http.StatusUnprocessableEntity, err)
@@ -196,7 +196,7 @@ func (s *server) authenticateUserWithJwt(w http.ResponseWriter, r *http.Request,
 	expirationTime := time.Now().Add(5 * time.Minute)
 	// Create the JWT claims, which includes the username and expiry time
 	claims := &Claims{
-		AccountId: u.AccountId,
+		AccountId: u.Id,
 		Email: u.Email,
 		Username: u.Username,
 		StandardClaims: jwt.StandardClaims{

@@ -8,7 +8,7 @@ import (
 )
 
 type User struct {
-	AccountId        int    `json:"account_id"`
+	Id                int    `json:"id"`
 	Username          string `json:"username"`
 	Email             string `json:"email"`
 	Password          string `json:"password,omitempty"`

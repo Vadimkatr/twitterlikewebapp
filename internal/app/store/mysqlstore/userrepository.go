@@ -32,7 +32,7 @@ func (r *UserRepository) Create(u *model.User) error {
 		return err
 	}
 	for row.Next() {
-		err := row.Scan(&u.AccountId)
+		err := row.Scan(&u.Id)
 		return err
 	}
 	return nil
@@ -41,10 +41,10 @@ func (r *UserRepository) Create(u *model.User) error {
 func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
 	u := &model.User{}
 	if err := r.store.db.QueryRow(
-		"SELECT account_id, email, username, encrypted_password FROM users WHERE email = ?", 
+		"SELECT id, email, username, encrypted_password FROM users WHERE email = ?", 
 		email,
 	).Scan(
-		&u.AccountId, 
+		&u.Id, 
 		&u.Email, 
 		&u.Username,
 		&u.EncryptedPassword,
@@ -61,10 +61,10 @@ func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
 func (r *UserRepository) Find(id int) (*model.User, error) {
 	u := &model.User{}
 	if err := r.store.db.QueryRow(
-		"SELECT account_id, email, username, encrypted_password FROM users WHERE account_id = ?", 
+		"SELECT id, email, username, encrypted_password FROM users WHERE id = ?", 
 		id,
 	).Scan(
-		&u.AccountId, 
+		&u.Id, 
 		&u.Email, 
 		&u.Username,
 		&u.EncryptedPassword,
