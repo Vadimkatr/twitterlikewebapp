@@ -211,13 +211,13 @@ func (s *server) handleGetAllTweetsFromSubscriptions() http.HandlerFunc {
 			return
 		}
 
-		tweets, err := s.store.User().FindTweetsFromSubscriptions(u.Id) // TODO use Tweets()
+		tweets, err := s.store.Tweet().FindTweetsFromSubscriptions(u.Id)
 		if err != nil {
 			s.error(w, r, http.StatusUnprocessableEntity, err)
 			return
 		}
 
-		s.respond(w, r, http.StatusCreated, map[string][]string{"tweets": tweets})
+		s.respond(w, r, http.StatusOK, map[string][]string{"tweets": tweets})
 	}
 }
 

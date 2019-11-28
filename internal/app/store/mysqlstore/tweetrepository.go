@@ -28,6 +28,33 @@ func (r *TweetRepository) Create(t *model.Tweet) error {
 	return nil
 }
 
+func (r *TweetRepository) FindTweetsFromSubscriptions(id int) ([]string, error) {
+	rows, err := r.store.db.Query(
+		"SELECT message FROM tweets WHERE user_id IN" +
+		"	(SELECT publisher_user_id FROM subscribers WHERE user_id = ?)" +
+		"	ORDER BY post_time DESC",
+		id,
+	)
+	defer rows.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	var tweets []string
+    for rows.Next() {
+		var tweet string
+        err := rows.Scan(&tweet)
+        if err != nil {
+			return nil, err
+        }
+        tweets = append(tweets, tweet)
+    }
+    if err := rows.Err(); err != nil {
+        return nil, err
+	}
+	return tweets, nil
+}
+
 func (r *TweetRepository) GetAllUserTweets(userId int) ([]string, error) {
 
 	rows, err := r.store.db.Query(
