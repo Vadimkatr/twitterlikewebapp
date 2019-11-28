@@ -58,6 +58,7 @@ func (s *server) configureRouter() {
 	s.router.HandleFunc("/login", s.handleUsersLogin()).Methods("POST")
 	s.router.HandleFunc("/tweets", s.handleTweetsCreate()).Methods("POST")
 	s.router.HandleFunc("/tweets", s.handleGetAllTweetsFromSubscriptions()).Methods("GET")
+	s.router.HandleFunc("/mytweets", s.handleGetAllUserTweets()).Methods("GET")
 	s.router.HandleFunc("/subscribe", s.handleSubscribeToUser()).Methods("POST")
 }
 
@@ -210,13 +211,38 @@ func (s *server) handleGetAllTweetsFromSubscriptions() http.HandlerFunc {
 			return
 		}
 
-		tweets, err := s.store.User().FindTweetsFromSubscriptions(u.Id)
+		tweets, err := s.store.User().FindTweetsFromSubscriptions(u.Id) // TODO use Tweets()
 		if err != nil {
 			s.error(w, r, http.StatusUnprocessableEntity, err)
 			return
 		}
 
 		s.respond(w, r, http.StatusCreated, map[string][]string{"tweets": tweets})
+	}
+}
+
+func (s *server) handleGetAllUserTweets() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userId, err, code := s.checkAuthenticateUserWithJwt(w, r)
+		if err != nil {
+			s.error(w, r, code, errNotAuthenticated)
+			return
+		}
+
+		u, err := s.store.User().Find(userId)
+		if err != nil {
+			// TODO: set better error message for this case
+			s.error(w, r, http.StatusInternalServerError, errors.New("cant find user in db"))
+			return
+		}
+
+		tweets, err := s.store.Tweet().GetAllUserTweets(u.Id)
+		if err != nil {
+			s.error(w, r, http.StatusUnprocessableEntity, err)
+			return
+		}
+
+		s.respond(w, r, http.StatusOK, map[string][]string{"tweets": tweets})
 	}
 }
 

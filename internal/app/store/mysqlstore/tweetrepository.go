@@ -27,3 +27,29 @@ func (r *TweetRepository) Create(t *model.Tweet) error {
 	}
 	return nil
 }
+
+func (r *TweetRepository) GetAllUserTweets(userId int) ([]string, error) {
+
+	rows, err := r.store.db.Query(
+		"SEKECT message FROM tweets WHERE user_id = ?",
+		userId,
+	)
+
+	defer rows.Close()
+	if err != nil {
+		return nil, err
+	}
+	var tweets []string
+	var tweet string
+    for rows.Next() {
+        err := rows.Scan(&tweet)
+        if err != nil {
+			return nil, err
+        }
+        tweets = append(tweets, tweet)
+    }
+    if err := rows.Err(); err != nil {
+        return nil, err
+	}
+	return tweets, nil
+}

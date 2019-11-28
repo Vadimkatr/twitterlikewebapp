@@ -15,4 +15,5 @@ type UserRepository interface {
 
 type TweetRepository interface {
 	Create(*model.Tweet) error
+	GetAllUserTweets(int) ([]string, error)
 }
