@@ -10,9 +10,9 @@ type UserRepository interface {
 	FindByEmail(string) (*model.User, error)
 	FindByUsername(string) (*model.User, error)
 	SubscribeTo(*model.User, *model.User) error
+	FindTweetsFromSubscriptions(int) ([]string, error)
 }
 
 type TweetRepository interface {
 	Create(*model.Tweet) error
 }
-

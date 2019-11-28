@@ -1,17 +1,17 @@
 package apiserver
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
-	"encoding/json"
 	"time"
-	
+
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
-	
-	"github.com/Vadimkatr/twitterlikewebapp/internal/app/store"
+
 	"github.com/Vadimkatr/twitterlikewebapp/internal/app/model"
+	"github.com/Vadimkatr/twitterlikewebapp/internal/app/store"
 )
 
 type server struct {
@@ -27,7 +27,7 @@ var (
 )
 
 type Claims struct {
-	AccountId int `json:"id"`
+	AccountId int    `json:"id"`
 	Email     string `json:"email"`
 	Username  string `json:"username"`
 	jwt.StandardClaims
@@ -57,6 +57,7 @@ func (s *server) configureRouter() {
 	s.router.HandleFunc("/register", s.handleUsersCreate()).Methods("POST")
 	s.router.HandleFunc("/login", s.handleUsersLogin()).Methods("POST")
 	s.router.HandleFunc("/tweets", s.handleTweetsCreate()).Methods("POST")
+	s.router.HandleFunc("/tweets", s.handleGetAllTweetsFromSubscriptions()).Methods("GET")
 	s.router.HandleFunc("/subscribe", s.handleSubscribeToUser()).Methods("POST")
 }
 
@@ -105,7 +106,7 @@ func (s *server) handleUsersLogin() http.HandlerFunc {
 			s.error(w, r, http.StatusUnauthorized, errIncorrectEmailOrPassword)
 			return
 		}
-		
+
 		// init jwt token
 		tokenString, err := s.authenticateUserWithJwt(w, r, u)
 		if err != nil {
@@ -183,7 +184,7 @@ func (s *server) handleTweetsCreate() http.HandlerFunc {
 
 		t := &model.Tweet{
 			Message: req.Message,
-			UserId: u.Id,
+			UserId:  u.Id,
 		}
 		if err := s.store.Tweet().Create(t); err != nil {
 			s.error(w, r, http.StatusUnprocessableEntity, err)
@@ -191,6 +192,31 @@ func (s *server) handleTweetsCreate() http.HandlerFunc {
 		}
 
 		s.respond(w, r, http.StatusCreated, map[string]string{"id": string(t.Id), "message": t.Message})
+	}
+}
+
+func (s *server) handleGetAllTweetsFromSubscriptions() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userId, err, code := s.checkAuthenticateUserWithJwt(w, r)
+		if err != nil {
+			s.error(w, r, code, errNotAuthenticated)
+			return
+		}
+
+		u, err := s.store.User().Find(userId)
+		if err != nil {
+			// TODO: set better error message for this case
+			s.error(w, r, http.StatusInternalServerError, errors.New("cant find user in db"))
+			return
+		}
+
+		tweets, err := s.store.User().FindTweetsFromSubscriptions(u.Id)
+		if err != nil {
+			s.error(w, r, http.StatusUnprocessableEntity, err)
+			return
+		}
+
+		s.respond(w, r, http.StatusCreated, map[string][]string{"tweets": tweets})
 	}
 }
 
@@ -237,8 +263,8 @@ func (s *server) authenticateUserWithJwt(w http.ResponseWriter, r *http.Request,
 	// Create the JWT claims, which includes the username and expiry time
 	claims := &Claims{
 		AccountId: u.Id,
-		Email: u.Email,
-		Username: u.Username,
+		Email:     u.Email,
+		Username:  u.Username,
 		StandardClaims: jwt.StandardClaims{
 			// In JWT, the expiry time is expressed as unix milliseconds
 			ExpiresAt: expirationTime.Unix(),
