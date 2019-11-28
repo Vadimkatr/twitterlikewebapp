@@ -4,7 +4,6 @@ import (
 	validation "github.com/go-ozzo/ozzo-validation"
 	"golang.org/x/crypto/bcrypt"
 	"github.com/go-ozzo/ozzo-validation/is"
-
 )
 
 type User struct {
@@ -20,8 +19,19 @@ func (u *User) Validate() error {
 	return validation.ValidateStruct(
 		u,
 		validation.Field(&u.Email, validation.Required, is.Email),
-		validation.Field(&u.Password, validation.Required, validation.Length(6, 100)),
+		validation.Field(&u.Password, validation.By(requiredIf(u.EncryptedPassword == "")), validation.Length(6, 100)),
 	)
+}
+
+// requiredIf validate case: if u.EncrPass == "" => u.Pass != "", else u.Pass == ""
+func requiredIf(cond bool) validation.RuleFunc {
+	return func(value interface{}) error {
+		if cond {
+			return validation.Validate(value, validation.Required)
+		}
+
+		return nil
+	}
 }
 
 func (u *User) BeforeCreate() error {
