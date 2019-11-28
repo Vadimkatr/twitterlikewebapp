@@ -1,4 +1,5 @@
 package model
+
 import (
 	"testing"
 
@@ -6,9 +7,9 @@ import (
 )
 
 func TestUser_Validate(t *testing.T) {
-	testCases := []struct{
-		name string
-		u func() *User
+	testCases := []struct {
+		name    string
+		u       func() *User
 		isValid bool
 	}{
 		{
@@ -24,7 +25,7 @@ func TestUser_Validate(t *testing.T) {
 				u := TestUser(t)
 				u.Password = ""
 				u.EncryptedPassword = "encryptedpassword"
-				
+
 				return u
 			},
 			isValid: true,
@@ -34,7 +35,7 @@ func TestUser_Validate(t *testing.T) {
 			u: func() *User {
 				u := TestUser(t)
 				u.Email = ""
-				
+
 				return u
 			},
 			isValid: false,
@@ -44,7 +45,7 @@ func TestUser_Validate(t *testing.T) {
 			u: func() *User {
 				u := TestUser(t)
 				u.Email = "invalidgmail.com"
-				
+
 				return u
 			},
 			isValid: false,
@@ -67,7 +68,7 @@ func TestUser_Validate(t *testing.T) {
 
 				return u
 			},
-			isValid: false,	
+			isValid: false,
 		},
 	}
 
@@ -78,7 +79,7 @@ func TestUser_Validate(t *testing.T) {
 			} else {
 				assert.Error(t, tc.u().Validate())
 			}
-		})	
+		})
 	}
 }
 
