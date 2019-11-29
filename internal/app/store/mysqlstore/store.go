@@ -2,14 +2,14 @@ package mysqlstore
 
 import (
 	"database/sql"
-	
+
 	"github.com/Vadimkatr/twitterlikewebapp/internal/app/store"
 )
 
 type Store struct {
-	db                   *sql.DB
-	userRepository       *UserRepository
-	tweetRepository      *TweetRepository
+	db              *sql.DB
+	userRepository  *UserRepository
+	tweetRepository *TweetRepository
 }
 
 func New(db *sql.DB) *Store {

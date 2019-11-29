@@ -41,11 +41,11 @@ func (r *UserRepository) Create(u *model.User) error {
 func (r *UserRepository) Find(id int) (*model.User, error) {
 	u := &model.User{}
 	if err := r.store.db.QueryRow(
-		"SELECT id, email, username, encrypted_password FROM users WHERE id = ?", 
+		"SELECT id, email, username, encrypted_password FROM users WHERE id = ?",
 		id,
 	).Scan(
-		&u.Id, 
-		&u.Email, 
+		&u.Id,
+		&u.Email,
 		&u.Username,
 		&u.EncryptedPassword,
 	); err != nil {
@@ -54,19 +54,18 @@ func (r *UserRepository) Find(id int) (*model.User, error) {
 		}
 		return nil, err
 	}
-	
+
 	return u, nil
 }
-
 
 func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
 	u := &model.User{}
 	if err := r.store.db.QueryRow(
-		"SELECT id, email, username, encrypted_password FROM users WHERE email = ?", 
+		"SELECT id, email, username, encrypted_password FROM users WHERE email = ?",
 		email,
 	).Scan(
-		&u.Id, 
-		&u.Email, 
+		&u.Id,
+		&u.Email,
 		&u.Username,
 		&u.EncryptedPassword,
 	); err != nil {
@@ -75,19 +74,18 @@ func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
 		}
 		return nil, err
 	}
-	
+
 	return u, nil
 }
-
 
 func (r *UserRepository) FindByUsername(username string) (*model.User, error) {
 	u := &model.User{}
 	if err := r.store.db.QueryRow(
-		"SELECT id, email, username, encrypted_password FROM users WHERE username = ?", 
+		"SELECT id, email, username, encrypted_password FROM users WHERE username = ?",
 		username,
 	).Scan(
-		&u.Id, 
-		&u.Email, 
+		&u.Id,
+		&u.Email,
 		&u.Username,
 		&u.EncryptedPassword,
 	); err != nil {
@@ -96,7 +94,7 @@ func (r *UserRepository) FindByUsername(username string) (*model.User, error) {
 		}
 		return nil, err
 	}
-	
+
 	return u, nil
 }
 
@@ -112,6 +110,6 @@ func (r *UserRepository) SubscribeTo(u *model.User, su *model.User) error {
 	if err != nil {
 		return err
 	}
-	
+
 	return nil
 }

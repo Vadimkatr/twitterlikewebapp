@@ -4,6 +4,7 @@ import (
 	"github.com/Vadimkatr/twitterlikewebapp/internal/app/model"
 )
 
+// UserRepository interface - implement methods that should be in custom repository
 type UserRepository interface {
 	Create(*model.User) error
 	Find(int) (*model.User, error)
@@ -12,6 +13,7 @@ type UserRepository interface {
 	SubscribeTo(*model.User, *model.User) error
 }
 
+// TweetRepository interface - implement methods that should be in custom repository
 type TweetRepository interface {
 	Create(*model.Tweet) error
 	GetAllUserTweets(int) ([]string, error)
