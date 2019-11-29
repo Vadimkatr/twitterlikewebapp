@@ -1,6 +1,7 @@
 package apiserver
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/google/uuid"
 
 	"github.com/Vadimkatr/twitterlikewebapp/internal/app/model"
 	"github.com/Vadimkatr/twitterlikewebapp/internal/app/store"
@@ -19,6 +21,10 @@ type server struct {
 	logger *logrus.Logger
 	store  store.Store
 }
+
+const (
+	ctxKeyRequestID int8   = iota
+)
 
 var (
 	jwtKey                      = []byte("my_secret_key")
@@ -54,12 +60,53 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) configureRouter() {
+	s.router.Use(s.setRequestID)
+	s.router.Use(s.logRequest)
 	s.router.HandleFunc("/register", s.handleUsersCreate()).Methods("POST")
 	s.router.HandleFunc("/login", s.handleUsersLogin()).Methods("POST")
 	s.router.HandleFunc("/tweets", s.handleTweetsCreate()).Methods("POST")
 	s.router.HandleFunc("/tweets", s.handleGetAllTweetsFromSubscriptions()).Methods("GET")
 	s.router.HandleFunc("/mytweets", s.handleGetAllUserTweets()).Methods("GET")
 	s.router.HandleFunc("/subscribe", s.handleSubscribeToUser()).Methods("POST")
+}
+
+func (s *server) setRequestID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := uuid.New().String()
+		w.Header().Set("X-Request-ID", id)
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKeyRequestID, id)))
+	})
+}
+
+func (s *server) logRequest(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logger := s.logger.WithFields(logrus.Fields{
+			"remote_addr": r.RemoteAddr,
+			"request_id":  r.Context().Value(ctxKeyRequestID),
+		})
+		logger.Infof("started %s %s", r.Method, r.RequestURI)
+
+		start := time.Now()
+		rw := &responseWriter{w, http.StatusOK}
+		next.ServeHTTP(rw, r)
+
+		var level logrus.Level
+		switch {
+		case rw.code >= 500:
+			level = logrus.ErrorLevel
+		case rw.code >= 400:
+			level = logrus.WarnLevel
+		default:
+			level = logrus.InfoLevel
+		}
+		logger.Logf(
+			level,
+			"completed with %d %s in %v",
+			rw.code,
+			http.StatusText(rw.code),
+			time.Now().Sub(start),
+		)
+	})
 }
 
 func (s *server) handleUsersCreate() http.HandlerFunc {
