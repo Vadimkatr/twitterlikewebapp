@@ -58,7 +58,7 @@ func (r *TweetRepository) FindTweetsFromSubscriptions(id int) ([]string, error) 
 func (r *TweetRepository) GetAllUserTweets(userId int) ([]string, error) {
 
 	rows, err := r.store.db.Query(
-		"SEKECT message FROM tweets WHERE user_id = ?",
+		"SELECT message FROM tweets WHERE user_id = ? ORDER BY id DESC"
 		userId,
 	)
 
