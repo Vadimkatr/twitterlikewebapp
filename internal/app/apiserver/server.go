@@ -8,9 +8,9 @@ import (
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
-	"github.com/google/uuid"
 
 	"github.com/Vadimkatr/twitterlikewebapp/internal/app/model"
 	"github.com/Vadimkatr/twitterlikewebapp/internal/app/store"
@@ -23,19 +23,19 @@ type server struct {
 }
 
 const (
-	ctxKeyRequestID int8   = iota
+	ctxKeyRequestID int8 = iota
 )
 
 var (
-	jwtKey                      = []byte("my_secret_key")
+	jwtKey                      = []byte("my_secret_key_that_will_be_very_secret")
 	errIncorrectEmailOrPassword = errors.New("incorrect email or password")
 	errNotAuthenticated         = errors.New("not authenticated")
 )
 
 type Claims struct {
-	AccountId int    `json:"id"`
-	Email     string `json:"email"`
-	Username  string `json:"username"`
+	UserId   int    `json:"id"`
+	Email    string `json:"email"`
+	Username string `json:"username"`
 	jwt.StandardClaims
 }
 
@@ -59,6 +59,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.router.ServeHTTP(w, r)
 }
 
+// configureRouter - set server routes
 func (s *server) configureRouter() {
 	s.router.Use(s.setRequestID)
 	s.router.Use(s.logRequest)
@@ -70,6 +71,7 @@ func (s *server) configureRouter() {
 	s.router.HandleFunc("/subscribe", s.handleSubscribeToUser()).Methods("POST")
 }
 
+// setRequestID - amiddleware that add special uuid for request
 func (s *server) setRequestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := uuid.New().String()
@@ -78,6 +80,7 @@ func (s *server) setRequestID(next http.Handler) http.Handler {
 	})
 }
 
+// logRequest - logging middleware
 func (s *server) logRequest(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		logger := s.logger.WithFields(logrus.Fields{
@@ -109,6 +112,7 @@ func (s *server) logRequest(next http.Handler) http.Handler {
 	})
 }
 
+// handleUsersCreate - create user in db
 func (s *server) handleUsersCreate() http.HandlerFunc {
 	type request struct {
 		Email    string `json:"email"`
@@ -137,6 +141,7 @@ func (s *server) handleUsersCreate() http.HandlerFunc {
 	}
 }
 
+// handleUsersLogin - try to find user in db and respond jwt to user
 func (s *server) handleUsersLogin() http.HandlerFunc {
 	type request struct {
 		Email    string `json:"email"`
@@ -155,7 +160,7 @@ func (s *server) handleUsersLogin() http.HandlerFunc {
 			return
 		}
 
-		// init jwt token
+		// Init jwt
 		tokenString, err := s.authenticateUserWithJwt(w, r, u)
 		if err != nil {
 			// If there is an error in creating the JWT return an internal server error
@@ -167,6 +172,7 @@ func (s *server) handleUsersLogin() http.HandlerFunc {
 	}
 }
 
+// handleSubscribeToUser - add note to db that user subscribe to another user
 func (s *server) handleSubscribeToUser() http.HandlerFunc {
 	type request struct {
 		Nickname string `json:"nickname"`
@@ -186,14 +192,21 @@ func (s *server) handleSubscribeToUser() http.HandlerFunc {
 
 		u, err := s.store.User().Find(userId)
 		if err != nil {
-			// TODO: set better error message for this case
-			s.error(w, r, http.StatusInternalServerError, errors.New("cant find user in db"))
+			if err == store.ErrRecordNotFound {
+				s.error(w, r, http.StatusInternalServerError, store.ErrRecordNotFound)
+			} else {
+				s.error(w, r, http.StatusInternalServerError, err)
+			}
 			return
 		}
 
 		su, err := s.store.User().FindByUsername(req.Nickname)
 		if err != nil {
-			s.error(w, r, http.StatusInternalServerError, errors.New("cant find user in db"))
+			if err == store.ErrRecordNotFound {
+				s.error(w, r, http.StatusBadRequest, store.ErrRecordNotFound)
+			} else {
+				s.error(w, r, http.StatusInternalServerError, err)
+			}
 			return
 		}
 
@@ -206,6 +219,7 @@ func (s *server) handleSubscribeToUser() http.HandlerFunc {
 	}
 }
 
+// handleTweetsCreate - add user tweet to db; respond is tweet id adn tweet message
 func (s *server) handleTweetsCreate() http.HandlerFunc {
 	type request struct {
 		Message string `json:"message"`
@@ -225,8 +239,11 @@ func (s *server) handleTweetsCreate() http.HandlerFunc {
 
 		u, err := s.store.User().Find(userId)
 		if err != nil {
-			// TODO: set better error message for this case
-			s.error(w, r, http.StatusInternalServerError, errors.New("cant find user in db"))
+			if err == store.ErrRecordNotFound {
+				s.error(w, r, http.StatusInternalServerError, store.ErrRecordNotFound)
+			} else {
+				s.error(w, r, http.StatusInternalServerError, err)
+			}
 			return
 		}
 
@@ -243,6 +260,7 @@ func (s *server) handleTweetsCreate() http.HandlerFunc {
 	}
 }
 
+// handleGetAllTweetsFromSubscriptions - find all tweets of user subscribtions
 func (s *server) handleGetAllTweetsFromSubscriptions() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userId, err, code := s.checkAuthenticateUserWithJwt(w, r)
@@ -253,8 +271,11 @@ func (s *server) handleGetAllTweetsFromSubscriptions() http.HandlerFunc {
 
 		u, err := s.store.User().Find(userId)
 		if err != nil {
-			// TODO: set better error message for this case
-			s.error(w, r, http.StatusInternalServerError, errors.New("cant find user in db"))
+			if err == store.ErrRecordNotFound {
+				s.error(w, r, http.StatusInternalServerError, store.ErrRecordNotFound)
+			} else {
+				s.error(w, r, http.StatusInternalServerError, err)
+			}
 			return
 		}
 
@@ -268,6 +289,7 @@ func (s *server) handleGetAllTweetsFromSubscriptions() http.HandlerFunc {
 	}
 }
 
+// handleGetAllUserTweets - get all user tweets
 func (s *server) handleGetAllUserTweets() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userId, err, code := s.checkAuthenticateUserWithJwt(w, r)
@@ -278,8 +300,11 @@ func (s *server) handleGetAllUserTweets() http.HandlerFunc {
 
 		u, err := s.store.User().Find(userId)
 		if err != nil {
-			// TODO: set better error message for this case
-			s.error(w, r, http.StatusInternalServerError, errors.New("cant find user in db"))
+			if err == store.ErrRecordNotFound {
+				s.error(w, r, http.StatusInternalServerError, store.ErrRecordNotFound)
+			} else {
+				s.error(w, r, http.StatusInternalServerError, err)
+			}
 			return
 		}
 
@@ -293,8 +318,8 @@ func (s *server) handleGetAllUserTweets() http.HandlerFunc {
 	}
 }
 
+// checkAuthenticateUserWithJwt - get jwt from cookies and check them
 func (s *server) checkAuthenticateUserWithJwt(w http.ResponseWriter, r *http.Request) (int, error, int) {
-	// We can obtain the session token from the requests cookies, which come with every request
 	c, err := r.Cookie("token")
 	if err != nil {
 		if err == http.ErrNoCookie {
@@ -312,8 +337,7 @@ func (s *server) checkAuthenticateUserWithJwt(w http.ResponseWriter, r *http.Req
 	claims := &Claims{}
 
 	// Parse the JWT string and store the result in `claims`.
-	// Note that we are passing the key in this method as well. This method will return an error
-	// if the token is invalid (if it has expired according to the expiry time we set on sign in),
+	// Return error if the token is invalid (if it has expired according to the expiry time we set on sign in),
 	// or if the signature does not match
 	tkn, err := jwt.ParseWithClaims(tknStr, claims, func(token *jwt.Token) (interface{}, error) {
 		return jwtKey, nil
@@ -324,20 +348,20 @@ func (s *server) checkAuthenticateUserWithJwt(w http.ResponseWriter, r *http.Req
 		}
 		return 0, err, http.StatusBadRequest
 	}
+
 	if !tkn.Valid {
 		return 0, err, http.StatusUnauthorized
 	}
 
-	return claims.AccountId, nil, http.StatusOK
+	return claims.UserId, nil, http.StatusOK
 }
 
 func (s *server) authenticateUserWithJwt(w http.ResponseWriter, r *http.Request, u *model.User) (string, error) {
 	expirationTime := time.Now().Add(5 * time.Minute)
-	// Create the JWT claims, which includes the username and expiry time
+	// Create the JWT claims, which includes the user_id, username, and expiry time
 	claims := &Claims{
-		AccountId: u.Id,
-		Email:     u.Email,
-		Username:  u.Username,
+		UserId:   u.Id,
+		Username: u.Username,
 		StandardClaims: jwt.StandardClaims{
 			// In JWT, the expiry time is expressed as unix milliseconds
 			ExpiresAt: expirationTime.Unix(),
