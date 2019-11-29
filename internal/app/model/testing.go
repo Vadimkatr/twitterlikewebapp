@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// TestUser - in order not to create it many times
 func TestUser(t *testing.T) *User {
 	t.Helper()
 
@@ -15,11 +16,12 @@ func TestUser(t *testing.T) *User {
 	}
 }
 
+// TestTweet in order not to create it many times
 func TestTweet(t *testing.T) *Tweet {
 	t.Helper()
 
 	return &Tweet{
-		Message: "Test tweet",
+		Message:  "Test tweet",
 		UserId:   0,
 		PostTime: time.Now(),
 	}
