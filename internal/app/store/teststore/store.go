@@ -7,7 +7,8 @@ import (
 
 // Store ...
 type Store struct {
-	userRepository *UserRepository
+	userRepository  *UserRepository
+	tweetRepository *TweetRepository
 }
 
 // New ...
@@ -27,4 +28,17 @@ func (s *Store) User() store.UserRepository {
 	}
 
 	return s.userRepository
+}
+
+func (s *Store) Tweet() store.TweetRepository {
+	if s.tweetRepository != nil {
+		return s.tweetRepository
+	}
+
+	s.tweetRepository = &TweetRepository{
+		store:  s,
+		tweets: make(map[int]*model.Tweet),
+	}
+
+	return s.tweetRepository
 }
