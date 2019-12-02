@@ -32,7 +32,6 @@ const (
 var (
 	jwtKey                      = []byte("my_secret_key_that_will_be_very_secret")
 	errIncorrectEmailOrPassword = errors.New("incorrect email or password")
-	errNotAuthenticated         = errors.New("not authenticated")
 )
 
 type accessClaims struct {
@@ -72,13 +71,13 @@ func (s *server) configureRouter() {
 	s.router.Use(s.logRequest)
 	s.router.HandleFunc("/register", s.handleUsersCreate()).Methods("POST")
 	s.router.HandleFunc("/login", s.handleUsersLogin()).Methods("POST")
-	s.router.HandleFunc("/tweets", s.authmiddlewareWithJwt(s.handleTweetsCreate())).Methods("POST")
-	s.router.HandleFunc("/tweets", s.authmiddlewareWithJwt(s.handleGetAllTweetsFromSubscriptions())).Methods("GET")
-	s.router.HandleFunc("/mytweets", s.authmiddlewareWithJwt(s.handleGetAllUserTweets())).Methods("GET")
-	s.router.HandleFunc("/subscribe", s.authmiddlewareWithJwt(s.handleSubscribeToUser())).Methods("POST")
+	s.router.HandleFunc("/tweets", s.authMiddleware(s.handleTweetsCreate())).Methods("POST")
+	s.router.HandleFunc("/tweets", s.authMiddleware(s.handleGetAllTweetsFromSubscriptions())).Methods("GET")
+	s.router.HandleFunc("/mytweets", s.authMiddleware(s.handleGetAllUserTweets())).Methods("GET")
+	s.router.HandleFunc("/subscribe", s.authMiddleware(s.handleSubscribeToUser())).Methods("POST")
 }
 
-// setRequestID - amiddleware that add special uuid for request
+// setRequestID - middleware that add special uuid for request
 func (s *server) setRequestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := uuid.New().String()
@@ -168,7 +167,7 @@ func (s *server) handleUsersLogin() http.HandlerFunc {
 		}
 
 		// Init jwt
-		tokenString, err := s.authenticateUserWithJwt(w, r, u)
+		tokenString, err := s.authenticate(w, r, u)
 		if err != nil {
 			// If there is an error in creating the JWT return an internal server error
 			s.error(w, r, http.StatusInternalServerError, err)
@@ -304,7 +303,7 @@ func (s *server) handleGetAllUserTweets() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userIdStr := r.Header.Get("user_id")
 		userId, err := strconv.Atoi(userIdStr)
-		logrus.Println("AAAAAAAAAAA |", userIdStr, "|", userId,"|", err)
+		logrus.Println("AAAAAAAAAAA |", userIdStr, "|", userId, "|", err)
 
 		if err != nil {
 			s.error(w, r, http.StatusInternalServerError, nil)
@@ -329,103 +328,6 @@ func (s *server) handleGetAllUserTweets() http.HandlerFunc {
 
 		s.respond(w, r, http.StatusOK, map[string][]string{"tweets": tweets})
 	}
-}
-
-func (s *server) authmiddlewareWithJwt(next http.Handler) http.HandlerFunc {
-	return http.HandlerFunc(func (w http.ResponseWriter, r *http.Request) {
-		c, err := r.Cookie("access_token")
-		if err != nil {
-			if err == http.ErrNoCookie {
-				s.error(w, r, http.StatusUnauthorized, err)
-				return
-			}
-			s.error(w, r, http.StatusBadRequest, err)
-			return
-		}
-
-		atString := c.Value
-		atClaims := &accessClaims{}
-
-		tkn, err := jwt.ParseWithClaims(atString, atClaims, func(token *jwt.Token) (interface{}, error) {
-			return jwtKey, nil
-		})
-		if err != nil {
-			if err == jwt.ErrSignatureInvalid {
-				s.error(w, r, http.StatusUnauthorized, err)
-				return
-			}
-			s.error(w, r, http.StatusBadRequest, err)
-			return
-		}
-
-		if time.Unix(atClaims.ExpiresAt, 0).Sub(time.Now()) > 30 * time.Second {
-			atExpirationTime := time.Now().Add(jwtAccessExpTimeMin * time.Minute)
-			atString, err = s.createToken(atExpirationTime, atClaims)
-			if err != nil {
-				s.error(w, r, http.StatusInternalServerError, err)
-				return
-			}
-		}
-	
-		if !tkn.Valid {
-			s.error(w, r, http.StatusUnauthorized, err)
-			return
-		}
-		
-		userId := strconv.Itoa(atClaims.UserId)
-		r.Header.Set("user_id", userId)
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (s *server) authenticateUserWithJwt(w http.ResponseWriter, r *http.Request, u *model.User) (string, error) {
-	// Accesse Token init
-	atExpirationTime := time.Now().Add(1 * time.Minute)
-	atClaims := &accessClaims{
-		UserId:   u.Id,
-		Username: u.Username,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: atExpirationTime.Unix(),
-		},
-	}
-	atString, err := s.createToken(atExpirationTime, atClaims)
-	if err != nil {
-		return "", err
-	}
-
-	// Refresh Token init
-	rtExpirationTime := time.Now().Add(10 * time.Minute)
-	rtClaims := &refreshClaims{
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: rtExpirationTime.Unix(),
-		},
-	}
-	rtString, err :=s.createToken(rtExpirationTime, rtClaims)
-	if err != nil {
-		return "", err
-	}
-
-	http.SetCookie(w, &http.Cookie{
-		Name:    "access_token",
-		Value:   atString,
-		Expires: atExpirationTime,
-	})
-	http.SetCookie(w, &http.Cookie{
-		Name:    "refresh_token",
-		Value:   rtString,
-		Expires: rtExpirationTime,
-	})
-
-	return atString, nil
-}
-
-func (s *server) createToken(expTime time.Time, claims jwt.Claims) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(jwtKey)
-	if err != nil {
-		return "", err
-	}
-	return tokenString, err
 }
 
 func (s *server) error(w http.ResponseWriter, r *http.Request, code int, err error) {
