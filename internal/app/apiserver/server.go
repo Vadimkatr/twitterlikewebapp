@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -23,8 +24,8 @@ type server struct {
 }
 
 const (
-	jwtAccessExpTimeMin  time.Duration = 1
-	jwtRefreshExpTimeMin time.Duration = 3
+	jwtAccessExpTimeMin  time.Duration = 5
+	jwtRefreshExpTimeMin time.Duration = 10
 	ctxKeyRequestID      int8          = iota
 )
 
@@ -71,10 +72,10 @@ func (s *server) configureRouter() {
 	s.router.Use(s.logRequest)
 	s.router.HandleFunc("/register", s.handleUsersCreate()).Methods("POST")
 	s.router.HandleFunc("/login", s.handleUsersLogin()).Methods("POST")
-	s.router.HandleFunc("/tweets", s.handleTweetsCreate()).Methods("POST")
-	s.router.HandleFunc("/tweets", s.handleGetAllTweetsFromSubscriptions()).Methods("GET")
-	s.router.HandleFunc("/mytweets", s.handleGetAllUserTweets()).Methods("GET")
-	s.router.HandleFunc("/subscribe", s.handleSubscribeToUser()).Methods("POST")
+	s.router.HandleFunc("/tweets", s.authmiddlewareWithJwt(s.handleTweetsCreate())).Methods("POST")
+	s.router.HandleFunc("/tweets", s.authmiddlewareWithJwt(s.handleGetAllTweetsFromSubscriptions())).Methods("GET")
+	s.router.HandleFunc("/mytweets", s.authmiddlewareWithJwt(s.handleGetAllUserTweets())).Methods("GET")
+	s.router.HandleFunc("/subscribe", s.authmiddlewareWithJwt(s.handleSubscribeToUser())).Methods("POST")
 }
 
 // setRequestID - amiddleware that add special uuid for request
@@ -190,9 +191,10 @@ func (s *server) handleSubscribeToUser() http.HandlerFunc {
 			return
 		}
 
-		userId, err, code := s.checkAuthenticateUserWithJwt(w, r)
+		userIdStr := r.Header.Get("user_id")
+		userId, err := strconv.Atoi(userIdStr)
 		if err != nil {
-			s.error(w, r, code, errNotAuthenticated)
+			s.error(w, r, http.StatusInternalServerError, nil)
 			return
 		}
 
@@ -237,9 +239,10 @@ func (s *server) handleTweetsCreate() http.HandlerFunc {
 			return
 		}
 
-		userId, err, code := s.checkAuthenticateUserWithJwt(w, r)
+		userIdStr := r.Header.Get("user_id")
+		userId, err := strconv.Atoi(userIdStr)
 		if err != nil {
-			s.error(w, r, code, errNotAuthenticated)
+			s.error(w, r, http.StatusInternalServerError, nil)
 			return
 		}
 
@@ -269,9 +272,10 @@ func (s *server) handleTweetsCreate() http.HandlerFunc {
 // handleGetAllTweetsFromSubscriptions - find all tweets of user subscribtions
 func (s *server) handleGetAllTweetsFromSubscriptions() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userId, err, code := s.checkAuthenticateUserWithJwt(w, r)
+		userIdStr := r.Header.Get("user_id")
+		userId, err := strconv.Atoi(userIdStr)
 		if err != nil {
-			s.error(w, r, code, errNotAuthenticated)
+			s.error(w, r, http.StatusInternalServerError, nil)
 			return
 		}
 
@@ -298,9 +302,12 @@ func (s *server) handleGetAllTweetsFromSubscriptions() http.HandlerFunc {
 // handleGetAllUserTweets - get all user tweets
 func (s *server) handleGetAllUserTweets() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userId, err, code := s.checkAuthenticateUserWithJwt(w, r)
+		userIdStr := r.Header.Get("user_id")
+		userId, err := strconv.Atoi(userIdStr)
+		logrus.Println("AAAAAAAAAAA |", userIdStr, "|", userId,"|", err)
+
 		if err != nil {
-			s.error(w, r, code, errNotAuthenticated)
+			s.error(w, r, http.StatusInternalServerError, nil)
 			return
 		}
 
@@ -324,49 +331,51 @@ func (s *server) handleGetAllUserTweets() http.HandlerFunc {
 	}
 }
 
-// checkAuthenticateUserWithJwt - get jwt from cookies and check them
-func (s *server) checkAuthenticateUserWithJwt(w http.ResponseWriter, r *http.Request) (int, error, int) {
-	c, err := r.Cookie("access_token")
-	if err != nil {
-		if err == http.ErrNoCookie {
-			// If the cookie is not set, return an unauthorized status
-			return 0, err, http.StatusUnauthorized
-		}
-		// For any other type of error, return a bad request status
-		return 0, err, http.StatusBadRequest
-	}
-
-	atString := c.Value
-	atClaims := &accessClaims{}
-	// Parse the JWT string and store the result in `claims`.
-	
-	// Return error if the token is invalid (if it has expired according to the expiry time we set on sign in),
-	// or if the signature does not match
-	tkn, err := jwt.ParseWithClaims(atString, atClaims, func(token *jwt.Token) (interface{}, error) {
-		return jwtKey, nil
-	})
-	if err != nil {
-		if err == jwt.ErrSignatureInvalid {
-			return 0, err, http.StatusUnauthorized
-		}
-		return 0, err, http.StatusBadRequest
-	}
-
-	if time.Unix(atClaims.ExpiresAt, 0).Sub(time.Now()) > 30 * time.Second {
-
-		atExpirationTime := time.Now().Add(jwtAccessExpTimeMin * time.Minute)
-
-		atString, err = s.createToken(atExpirationTime, atClaims)
+func (s *server) authmiddlewareWithJwt(next http.Handler) http.HandlerFunc {
+	return http.HandlerFunc(func (w http.ResponseWriter, r *http.Request) {
+		c, err := r.Cookie("access_token")
 		if err != nil {
-			return 0, err, http.StatusInternalServerError
+			if err == http.ErrNoCookie {
+				s.error(w, r, http.StatusUnauthorized, err)
+				return
+			}
+			s.error(w, r, http.StatusBadRequest, err)
+			return
 		}
-	}
 
-	if !tkn.Valid {
-		return 0, err, http.StatusUnauthorized
-	}
+		atString := c.Value
+		atClaims := &accessClaims{}
 
-	return atClaims.UserId, nil, http.StatusOK
+		tkn, err := jwt.ParseWithClaims(atString, atClaims, func(token *jwt.Token) (interface{}, error) {
+			return jwtKey, nil
+		})
+		if err != nil {
+			if err == jwt.ErrSignatureInvalid {
+				s.error(w, r, http.StatusUnauthorized, err)
+				return
+			}
+			s.error(w, r, http.StatusBadRequest, err)
+			return
+		}
+
+		if time.Unix(atClaims.ExpiresAt, 0).Sub(time.Now()) > 30 * time.Second {
+			atExpirationTime := time.Now().Add(jwtAccessExpTimeMin * time.Minute)
+			atString, err = s.createToken(atExpirationTime, atClaims)
+			if err != nil {
+				s.error(w, r, http.StatusInternalServerError, err)
+				return
+			}
+		}
+	
+		if !tkn.Valid {
+			s.error(w, r, http.StatusUnauthorized, err)
+			return
+		}
+		
+		userId := strconv.Itoa(atClaims.UserId)
+		r.Header.Set("user_id", userId)
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *server) authenticateUserWithJwt(w http.ResponseWriter, r *http.Request, u *model.User) (string, error) {
