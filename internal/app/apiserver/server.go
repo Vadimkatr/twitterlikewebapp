@@ -23,7 +23,9 @@ type server struct {
 }
 
 const (
-	ctxKeyRequestID int8 = iota
+	jwtAccessExpTimeMin  time.Duration = 1
+	jwtRefreshExpTimeMin time.Duration = 3
+	ctxKeyRequestID      int8          = iota
 )
 
 var (
@@ -32,10 +34,14 @@ var (
 	errNotAuthenticated         = errors.New("not authenticated")
 )
 
-type Claims struct {
+type accessClaims struct {
 	UserId   int    `json:"id"`
 	Email    string `json:"email"`
 	Username string `json:"username"`
+	jwt.StandardClaims
+}
+
+type refreshClaims struct {
 	jwt.StandardClaims
 }
 
@@ -320,7 +326,7 @@ func (s *server) handleGetAllUserTweets() http.HandlerFunc {
 
 // checkAuthenticateUserWithJwt - get jwt from cookies and check them
 func (s *server) checkAuthenticateUserWithJwt(w http.ResponseWriter, r *http.Request) (int, error, int) {
-	c, err := r.Cookie("token")
+	c, err := r.Cookie("access_token")
 	if err != nil {
 		if err == http.ErrNoCookie {
 			// If the cookie is not set, return an unauthorized status
@@ -330,16 +336,13 @@ func (s *server) checkAuthenticateUserWithJwt(w http.ResponseWriter, r *http.Req
 		return 0, err, http.StatusBadRequest
 	}
 
-	// Get the JWT string from the cookie
-	tknStr := c.Value
-
-	// Initialize a new instance of `Claims`
-	claims := &Claims{}
-
+	atString := c.Value
+	atClaims := &accessClaims{}
 	// Parse the JWT string and store the result in `claims`.
+	
 	// Return error if the token is invalid (if it has expired according to the expiry time we set on sign in),
 	// or if the signature does not match
-	tkn, err := jwt.ParseWithClaims(tknStr, claims, func(token *jwt.Token) (interface{}, error) {
+	tkn, err := jwt.ParseWithClaims(atString, atClaims, func(token *jwt.Token) (interface{}, error) {
 		return jwtKey, nil
 	})
 	if err != nil {
@@ -349,39 +352,71 @@ func (s *server) checkAuthenticateUserWithJwt(w http.ResponseWriter, r *http.Req
 		return 0, err, http.StatusBadRequest
 	}
 
+	if time.Unix(atClaims.ExpiresAt, 0).Sub(time.Now()) > 30 * time.Second {
+
+		atExpirationTime := time.Now().Add(jwtAccessExpTimeMin * time.Minute)
+
+		atString, err = s.createToken(atExpirationTime, atClaims)
+		if err != nil {
+			return 0, err, http.StatusInternalServerError
+		}
+	}
+
 	if !tkn.Valid {
 		return 0, err, http.StatusUnauthorized
 	}
 
-	return claims.UserId, nil, http.StatusOK
+	return atClaims.UserId, nil, http.StatusOK
 }
 
 func (s *server) authenticateUserWithJwt(w http.ResponseWriter, r *http.Request, u *model.User) (string, error) {
-	expirationTime := time.Now().Add(5 * time.Minute)
-	// Create the JWT claims, which includes the user_id, username, and expiry time
-	claims := &Claims{
+	// Accesse Token init
+	atExpirationTime := time.Now().Add(1 * time.Minute)
+	atClaims := &accessClaims{
 		UserId:   u.Id,
 		Username: u.Username,
 		StandardClaims: jwt.StandardClaims{
-			// In JWT, the expiry time is expressed as unix milliseconds
-			ExpiresAt: expirationTime.Unix(),
+			ExpiresAt: atExpirationTime.Unix(),
 		},
 	}
-	// Declare the token with the algorithm used for signing, and the claims
+	atString, err := s.createToken(atExpirationTime, atClaims)
+	if err != nil {
+		return "", err
+	}
+
+	// Refresh Token init
+	rtExpirationTime := time.Now().Add(10 * time.Minute)
+	rtClaims := &refreshClaims{
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: rtExpirationTime.Unix(),
+		},
+	}
+	rtString, err :=s.createToken(rtExpirationTime, rtClaims)
+	if err != nil {
+		return "", err
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:    "access_token",
+		Value:   atString,
+		Expires: atExpirationTime,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:    "refresh_token",
+		Value:   rtString,
+		Expires: rtExpirationTime,
+	})
+
+	return atString, nil
+}
+
+func (s *server) createToken(expTime time.Time, claims jwt.Claims) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	// Create the JWT string
 	tokenString, err := token.SignedString(jwtKey)
 	if err != nil {
 		return "", err
 	}
-	// Finally, we set the client cookie for "token" as the JWT we just generated
-	// we also set an expiry time which is the same as the token itself
-	http.SetCookie(w, &http.Cookie{
-		Name:    "token",
-		Value:   tokenString,
-		Expires: expirationTime,
-	})
-	return tokenString, nil
+	return tokenString, err
 }
 
 func (s *server) error(w http.ResponseWriter, r *http.Request, code int, err error) {
