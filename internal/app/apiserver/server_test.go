@@ -154,8 +154,6 @@ func TestServer_HandleGetAllTweetsFromSubscriptions(t *testing.T) {
 
 	u := model.TestUser(t)
 	u2 := model.TestUser(t)
-	u2.Username = "test_user"
-	u2.Email = "test@gmail.com"
 
 	tw2 := model.TestTweet(t, u2)
 
@@ -163,7 +161,7 @@ func TestServer_HandleGetAllTweetsFromSubscriptions(t *testing.T) {
 	s.store.User().Create(u2)
 	s.store.Tweet().Create(tw2)
 	s.store.User().SubscribeTo(u, u2)
-	
+
 	testCases := []struct {
 		name         string
 		idFromHeader string
@@ -171,9 +169,15 @@ func TestServer_HandleGetAllTweetsFromSubscriptions(t *testing.T) {
 		expectedCode int
 	}{
 		{
-			name:         "valid",
-			idFromHeader: strconv.Itoa(u.Id),
+			name:         "valid, have subscribes",
+			idFromHeader: strconv.Itoa(u2.Id),
 			response:     map[string]string{"tweets": tw2.Message},
+			expectedCode: http.StatusOK,
+		},
+		{
+			name:         "valid, but haven't subscribes",
+			idFromHeader: strconv.Itoa(u.Id),
+			response:     nil,
 			expectedCode: http.StatusOK,
 		},
 		{
@@ -200,10 +204,12 @@ func TestServer_HandleGetAllUserTweets(t *testing.T) {
 
 	u := model.TestUser(t)
 	tw := model.TestTweet(t, u)
+	u2 := model.TestUser(t)
 
 	s.store.User().Create(u)
 	s.store.Tweet().Create(tw)
-	
+	s.store.User().Create(u2)
+
 	testCases := []struct {
 		name         string
 		idFromHeader string
@@ -211,9 +217,15 @@ func TestServer_HandleGetAllUserTweets(t *testing.T) {
 		expectedCode int
 	}{
 		{
-			name:         "valid",
+			name:         "valid, have tweets",
 			idFromHeader: strconv.Itoa(u.Id),
 			response:     map[string]string{"tweets": tw.Message},
+			expectedCode: http.StatusOK,
+		},
+		{
+			name:         "valid, but no tweets",
+			idFromHeader: strconv.Itoa(u2.Id),
+			response:     nil,
 			expectedCode: http.StatusOK,
 		},
 		{

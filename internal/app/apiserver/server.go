@@ -303,7 +303,6 @@ func (s *server) handleGetAllUserTweets() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userIdStr := r.Header.Get("user_id")
 		userId, err := strconv.Atoi(userIdStr)
-		logrus.Println("AAAAAAAAAAA |", userIdStr, "|", userId, "|", err)
 
 		if err != nil {
 			s.error(w, r, http.StatusInternalServerError, nil)
