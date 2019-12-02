@@ -88,3 +88,16 @@ Check user with jwt. If ok, then find all user tweets. Result is:
 }
 ```
 Check user with jwt. If ok, then  find nickname from payload in db, if ok, them add note to `subscribers` table that user subscribe to another user. Result is:
+
+
+## Project init (if its needed)
+1. Create new user and run mysql db;
+2. Create new databases and run ddl script in `ddl/create_entities.dll` to create all tables.
+3. Set db config in `configs/apiserver.toml`;
+4. Changer api port if you want (`-//- cfg path`);
+5. You can run `py_scripts/helper.py` (script needed `requests` lib, to install them use `pip install requests` if you use pip or google will help you) (its optional);
+6. Run `make test` to run all tests (if you want);
+7. Run `make` to build project;
+8. `./apiserver` to run server;
+9. See endpoint above;
+10. 
