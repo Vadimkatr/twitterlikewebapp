@@ -2,7 +2,6 @@ package mysqlstore
 
 import (
 	"database/sql"
-
 	"github.com/Vadimkatr/twitterlikewebapp/internal/app/model"
 	"github.com/Vadimkatr/twitterlikewebapp/internal/app/store"
 )
@@ -27,10 +26,11 @@ func (r *UserRepository) Create(u *model.User) error {
 		u.EncryptedPassword,
 	)
 
-	defer row.Close()
 	if err != nil {
-		return err
+		return store.ErrRecordIsExist
 	}
+
+	defer row.Close()
 	for row.Next() {
 		err := row.Scan(&u.Id)
 		return err
@@ -106,10 +106,10 @@ func (r *UserRepository) SubscribeTo(u *model.User, su *model.User) error {
 		su.Id,
 	)
 
-	defer row.Close()
 	if err != nil {
 		return err
 	}
 
+	defer row.Close()
 	return nil
 }

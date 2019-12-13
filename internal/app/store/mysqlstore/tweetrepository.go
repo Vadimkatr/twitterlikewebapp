@@ -19,11 +19,11 @@ func (r *TweetRepository) Create(t *model.Tweet) error {
 		t.UserId,
 	)
 
-	defer row.Close()
 	if err != nil {
 		return err
 	}
 
+	defer row.Close()
 	for row.Next() {
 		err := row.Scan(&t.Id, &t.PostTime)
 		return err
@@ -39,11 +39,11 @@ func (r *TweetRepository) FindTweetsFromSubscriptions(id int) ([]string, error) 
 			"	ORDER BY post_time DESC",
 		id,
 	)
-	defer rows.Close()
 	if err != nil {
 		return nil, err
 	}
 
+	defer rows.Close()
 	var tweets []string
 	var tweet string
 	for rows.Next() {
@@ -68,11 +68,11 @@ func (r *TweetRepository) GetAllUserTweets(userId int) ([]string, error) {
 		userId,
 	)
 
-	defer rows.Close()
 	if err != nil {
 		return nil, err
 	}
 
+	defer rows.Close()
 	var tweets []string
 	var tweet string
 	for rows.Next() {
@@ -86,6 +86,6 @@ func (r *TweetRepository) GetAllUserTweets(userId int) ([]string, error) {
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	
+
 	return tweets, nil
 }
