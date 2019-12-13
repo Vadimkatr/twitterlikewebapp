@@ -25,3 +25,4 @@ CREATE TABLE subscribers (
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (publisher_user_id) REFERENCES users(id)
 );
+
