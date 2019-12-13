@@ -169,8 +169,8 @@ func (s *server) handleSubscribeToUser() http.HandlerFunc {
 
 		u, err := s.store.User().Find(userId)
 		if err != nil {
-			if err == store.ErrRecordNotFound {
-				s.error(w, r, http.StatusInternalServerError, store.ErrRecordNotFound)
+			if err == store.ErrUserNotFound {
+				s.error(w, r, http.StatusInternalServerError, store.ErrUserNotFound)
 			} else {
 				s.error(w, r, http.StatusInternalServerError, err)
 			}
@@ -179,8 +179,8 @@ func (s *server) handleSubscribeToUser() http.HandlerFunc {
 
 		su, err := s.store.User().FindByUsername(req.Nickname)
 		if err != nil {
-			if err == store.ErrRecordNotFound {
-				s.error(w, r, http.StatusBadRequest, store.ErrRecordNotFound)
+			if err == store.ErrUserNotFound {
+				s.error(w, r, http.StatusBadRequest, store.ErrUserNotFound)
 			} else {
 				s.error(w, r, http.StatusInternalServerError, err)
 			}
@@ -217,8 +217,8 @@ func (s *server) handleTweetsCreate() http.HandlerFunc {
 
 		u, err := s.store.User().Find(userId)
 		if err != nil {
-			if err == store.ErrRecordNotFound {
-				s.error(w, r, http.StatusInternalServerError, store.ErrRecordNotFound)
+			if err == store.ErrUserNotFound {
+				s.error(w, r, http.StatusInternalServerError, store.ErrUserNotFound)
 			} else {
 				s.error(w, r, http.StatusInternalServerError, err)
 			}
@@ -250,8 +250,8 @@ func (s *server) handleGetAllTweetsFromSubscriptions() http.HandlerFunc {
 
 		u, err := s.store.User().Find(userId)
 		if err != nil {
-			if err == store.ErrRecordNotFound {
-				s.error(w, r, http.StatusInternalServerError, store.ErrRecordNotFound)
+			if err == store.ErrUserNotFound {
+				s.error(w, r, http.StatusInternalServerError, store.ErrUserNotFound)
 			} else {
 				s.error(w, r, http.StatusInternalServerError, err)
 			}
@@ -281,8 +281,8 @@ func (s *server) handleGetAllUserTweets() http.HandlerFunc {
 
 		u, err := s.store.User().Find(userId)
 		if err != nil {
-			if err == store.ErrRecordNotFound {
-				s.error(w, r, http.StatusInternalServerError, store.ErrRecordNotFound)
+			if err == store.ErrUserNotFound {
+				s.error(w, r, http.StatusInternalServerError, store.ErrUserNotFound)
 			} else {
 				s.error(w, r, http.StatusInternalServerError, err)
 			}

@@ -27,7 +27,7 @@ func (r *UserRepository) Create(u *model.User) error {
 	)
 
 	if err != nil {
-		return store.ErrRecordIsExist
+		return store.ErrUserIsExist
 	}
 
 	defer row.Close()
@@ -50,7 +50,7 @@ func (r *UserRepository) Find(id int) (*model.User, error) {
 		&u.EncryptedPassword,
 	); err != nil {
 		if err != sql.ErrNoRows {
-			return nil, store.ErrRecordNotFound
+			return nil, store.ErrUserNotFound
 		}
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
 		&u.EncryptedPassword,
 	); err != nil {
 		if err != sql.ErrNoRows {
-			return nil, store.ErrRecordNotFound
+			return nil, store.ErrUserNotFound
 		}
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (r *UserRepository) FindByUsername(username string) (*model.User, error) {
 		&u.EncryptedPassword,
 	); err != nil {
 		if err != sql.ErrNoRows {
-			return nil, store.ErrRecordNotFound
+			return nil, store.ErrUserNotFound
 		}
 		return nil, err
 	}

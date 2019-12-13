@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	// ErrRecordNotFound something
-	ErrRecordNotFound = errors.New("record not found")
-	ErrRecordIsExist = errors.New("record is exist")
+	// ErrUserNotFound something
+	ErrUserNotFound = errors.New("user not found")
+	ErrUserIsExist = errors.New("user is exist")
 )

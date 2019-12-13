@@ -30,7 +30,7 @@ func (r *TweetRepository) FindTweetsFromSubscriptions(id int) ([]string, error) 
 func (r *TweetRepository) GetAllUserTweets(userId int) ([]string, error) {
 	u, err := r.store.User().Find(userId)
 	if err != nil {
-		return []string{}, store.ErrRecordNotFound
+		return []string{}, store.ErrUserNotFound
 	}
 	var tweets []string
 	for _, t := range r.tweets {

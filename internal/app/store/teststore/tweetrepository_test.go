@@ -21,7 +21,7 @@ func TestTweetRepository_GetAllUserTweets(t *testing.T) {
 	s := teststore.New()
 	tw := model.TestTweet(t, model.TestUser(t))
 	_, err := s.Tweet().GetAllUserTweets(tw.UserId)
-	assert.EqualError(t, err, store.ErrRecordNotFound.Error())
+	assert.EqualError(t, err, store.ErrUserNotFound.Error())
 
 	// add user to store; set tweet.UserID as user.Id and create tweet; find user tweet
 	u1 := model.TestUser(t)

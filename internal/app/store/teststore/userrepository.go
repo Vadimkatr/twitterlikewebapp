@@ -31,7 +31,7 @@ func (r *UserRepository) Create(u *model.User) error {
 func (r *UserRepository) Find(id int) (*model.User, error) {
 	u, ok := r.users[id]
 	if !ok {
-		return nil, store.ErrRecordNotFound
+		return nil, store.ErrUserNotFound
 	}
 
 	return u, nil
@@ -45,7 +45,7 @@ func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
 		}
 	}
 
-	return nil, store.ErrRecordNotFound
+	return nil, store.ErrUserNotFound
 }
 
 func (r *UserRepository) FindByUsername(username string) (*model.User, error) {
@@ -55,7 +55,7 @@ func (r *UserRepository) FindByUsername(username string) (*model.User, error) {
 		}
 	}
 
-	return nil, store.ErrRecordNotFound
+	return nil, store.ErrUserNotFound
 }
 
 func (r *UserRepository) SubscribeTo(u *model.User, su *model.User) error {
