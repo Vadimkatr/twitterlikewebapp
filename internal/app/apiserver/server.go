@@ -4,16 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net/http"
-	"os"
-	"strconv"
-	"time"
-
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"net/http"
+	"os"
+	"strconv"
 
 	"github.com/Vadimkatr/twitterlikewebapp/internal/app/model"
 	"github.com/Vadimkatr/twitterlikewebapp/internal/app/store"
@@ -26,9 +24,7 @@ type server struct {
 }
 
 const (
-	jwtAccessExpTimeMin  time.Duration = 5
-	jwtRefreshExpTimeMin time.Duration = 10
-	ctxKeyRequestID      int8          = iota
+	ctxKeyRequestID int8 = iota
 )
 
 var (
