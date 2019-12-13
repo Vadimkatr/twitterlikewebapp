@@ -5,7 +5,8 @@ import (
 )
 
 var (
-	// ErrUserNotFound something
-	ErrUserNotFound = errors.New("user not found")
-	ErrUserIsExist = errors.New("user is exist")
+	ErrUserNotFound        = errors.New("user not found")
+	ErrUserIsExist         = errors.New("user is exist")
+
+	ErrSubscritionIsCreate = errors.New("subscription is already create")
 )
