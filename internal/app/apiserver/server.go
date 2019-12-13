@@ -296,6 +296,7 @@ func (s *server) handleGetAllUserTweets() http.HandlerFunc {
 }
 
 func (s *server) error(w http.ResponseWriter, r *http.Request, code int, err error) {
+	s.logger.Error(err)
 	s.respond(w, r, code, map[string]string{"error": err.Error()})
 }
 
