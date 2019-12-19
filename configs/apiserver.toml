@@ -1,0 +1,2 @@
+bind_addr = ":8080"
+database_url = "gouser:password1111@tcp(127.0.0.1:3306)/test"
